@@ -38,6 +38,7 @@ def cadastro():
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor()
 
+        #Verifica se já foi cadastrado um email ou usuário igual, se não, cadastra e encaminha para o login
         cursor.execute("SELECT * FROM treinador WHERE nome = %s OR email = %s", (nome, email))
         if cursor.fetchone():
             flash("Nome de usuário ou email já cadastrado.", "erro")
@@ -62,6 +63,7 @@ def login():
         nome = request.form['nome'].strip()
         email = request.form['email'].strip()
 
+        #seleciona o treinador
         conn = mysql.connector.connect(**db_config)
         cursor = conn.cursor(dictionary=True)
         cursor.execute("SELECT * FROM treinador WHERE nome = %s AND email = %s", (nome, email))
@@ -70,48 +72,24 @@ def login():
         cursor.close()
         conn.close()
 
+        #confere se existe. Se sim, realiza o login, e se não, redireciona para a página de login novamente
         if treinador:
             session['usuario_id'] = treinador['id']
             session['usuario_nome'] = treinador['nome']
             print(session['usuario_id'])
-            return redirect(url_for('dashboard'))
+            return redirect(url_for('treinador'))
         else:
             flash("Treinador ou senha inválidos.", "erro")
             return redirect(url_for('login'))
 
     return render_template('login.html')
 
-# Rota do Painel Principal (Dashboard) - VERSÃO CORRIGIDA
-@app.route('/dashboard')
-def dashboard():
-    # Verifica se a chave 'usuario_id' existe na sessão.
-    if 'usuario_id' not in session:
-        # Se não estiver logado, envia uma mensagem e redireciona para a tela de login.
-        flash("Você precisa fazer login para acessar esta página.", "erro")
-        return redirect(url_for('login'))
-    
-    conn = mysql.connector.connect(**db_config)
-    cursor = conn.cursor(dictionary=True)
-
-    cursor.execute("SELECT * FROM treinador")
-    lista_treinadores = cursor.fetchall()
-
-    return render_template('dashboard.html', treinadores=lista_treinadores)
-
-# Rota de Logout
-@app.route('/logout')
-def logout():
-    session.pop('usuario_id', None)
-    session.pop('usuario_nome', None)
-    flash("Você saiu da sua conta.", "sucesso")
-    return redirect(url_for('login'))
-
-# Rota Principal (Raiz do site)
+# Rota Principal (Raiz do site, direciona para o login)
 @app.route('/')
 def index():
     return redirect(url_for('login'))
 
-# Rota para verificar se usuário ou email já existem
+# Rota para verificar se usuário ou email já existem no momento do cadastro
 @app.route('/verificar_usuario_email', methods=['POST'])
 def verificar_usuario_email():
     nome = request.form['nome']
@@ -130,9 +108,63 @@ def verificar_usuario_email():
 # =============================================== ROTAS TREINADOR ==============================================
 # ==============================================================================================================
 
-# Rota para Editar uma Desenvolvedora
-@app.route('/treinador', methods=['GET', 'POST'])
+# Rota do Painel Principal (Dashboard)
+@app.route('/treinador')
 def treinador():
+    # Verifica se a chave 'usuario_id' existe na sessão.
+    if 'usuario_id' not in session:
+        # Se não estiver logado, envia uma mensagem e redireciona para a tela de login.
+        flash("Você precisa fazer login para acessar esta página.", "erro")
+        return redirect(url_for('login'))
+    
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor(dictionary=True)
+    treinador_id = session['usuario_id']
+
+    cursor.execute("SELECT * FROM treinador WHERE id = %s", (treinador_id,))
+    treinador = cursor.fetchone()
+
+    cursor.execute("""
+        SELECT
+            p.id,
+            p.nome,
+            p.imagem_url,
+            p.altura,
+            p.peso,
+            p.hp,
+            p.attack,
+            p.defense,
+            p.special_attack,
+            p.special_defense,
+            p.speed,
+            p.evolucao,
+            tp.local,
+            GROUP_CONCAT(DISTINCT t.nome ORDER BY t.nome SEPARATOR ', ') AS tipos
+        FROM treinador_pokemon tp
+        JOIN pokemon p ON tp.pokemon_id = p.id
+        LEFT JOIN pokemon_tipo pt ON p.id = pt.pokemon_id
+        LEFT JOIN tipo t ON t.id = pt.tipo_id
+        WHERE tp.treinador_id = %s
+        GROUP BY
+            p.id, p.nome, p.imagem_url,
+            p.hp, p.attack, p.defense,
+            p.special_attack, p.special_defense, p.speed,
+            tp.local
+        ORDER BY p.nome ASC
+    """, (treinador_id,))
+    lista_pokemons = cursor.fetchall()
+    
+    for p in lista_pokemons:
+        if p.get('tipos'):
+            p['tipos'] = [t.strip() for t in p['tipos'].split(',') if t.strip()]
+        else:
+            p['tipos'] = []
+
+    return render_template('treinador.html', treinador=treinador, pokemons=lista_pokemons)
+
+# Rota para Editar um Treinador
+@app.route('/treinador/editar', methods=['GET', 'POST'])
+def editar_treinador():
     if 'usuario_id' not in session:
         flash("Você precisa fazer login para acessar esta página.", "erro")
         return redirect(url_for('login'))
@@ -154,13 +186,13 @@ def treinador():
 
         if not nome:
             flash("O nome do treinador é obrigatório.", "erro")
-            return redirect(url_for('treinador'))
+            return redirect(url_for('editar_treinador'))
         if not email:
             flash("O email do treinador é obrigatório.", "erro")
-            return redirect(url_for('treinador'))
+            return redirect(url_for('editar_treinador'))
         if not cpf:
             flash("O cpf do treinador é obrigatório.", "erro")
-            return redirect(url_for('treinador'))
+            return redirect(url_for('editar_treinador'))
 
         # Verifica se o novo nome já existe em outro registro
         cursor.execute("SELECT id FROM treinador WHERE id != %s AND (nome = %s OR email = %s OR cpf = %s)", (cod, nome, email, cpf))
@@ -168,7 +200,7 @@ def treinador():
             flash("Já existe outro desenvolvedor ou com este nome, ou com este email, ou com este cpf.", "erro")
             cursor.close()
             conn.close()
-            return redirect(url_for('treinador'))
+            return redirect(url_for('editar_treinador'))
         
         # Atualiza o registro
         cursor.execute("UPDATE treinador SET nome = %s, email = %s, cpf = %s, foto = %s, cidade = %s WHERE id = %s", (nome, email, cpf, foto, cidade, cod))
@@ -178,20 +210,20 @@ def treinador():
         conn.close()
 
         flash("Treinador atualizado com sucesso!", "sucesso")
-        return redirect(url_for('treinador'))
+        return redirect(url_for('editar_treinador'))
 
     # GET: Busca o Treinador atual para preencher o formulário
     cursor.execute("SELECT * FROM treinador WHERE id = %s", (cod,))
-    tre = cursor.fetchone()
+    treinador = cursor.fetchone()
     
     cursor.close()
     conn.close()
 
     if not treinador:
         flash("Treinador não encontrado.", "erro")
-        return redirect(url_for('dashboard'))
+        return redirect(url_for('treinador'))
 
-    return render_template('treinador.html', tre=tre)
+    return render_template('editar_treinador.html', treinador=treinador)
 
 # ================================================================================================================
 # =============================================== PESQUISA POKÉMONS ==============================================
@@ -215,12 +247,15 @@ def pokemons():
             p.id,
             p.nome,
             p.imagem_url,
+            p.altura,
+            p.peso,
             p.hp,
             p.attack,
             p.defense,
             p.special_attack,
             p.special_defense,
             p.speed,
+            p.evolucao,
             GROUP_CONCAT(DISTINCT t.nome ORDER BY t.nome SEPARATOR ', ') AS tipos,
 
             CASE 
@@ -240,11 +275,12 @@ def pokemons():
 
     params = []
 
-    # pesquisa apenas por nome
+    # pesquisa por nome OU id
     if query:
         search_query = "%" + query + "%"
-        base_query += " WHERE p.nome LIKE %s "
+        base_query += " WHERE p.nome LIKE %s OR p.id = %s "
         params.append(search_query)
+        params.append(query)   # aqui você envia o valor puro, não com wildcards
 
     base_query += """
         GROUP BY
@@ -325,18 +361,20 @@ def pokedex():
     # Lógica de pesquisa
     treinador_id = session['usuario_id']
 
-    
     cursor.execute("""
         SELECT
             p.id,
             p.nome,
             p.imagem_url,
+            p.altura,
+            p.peso,
             p.hp,
             p.attack,
             p.defense,
             p.special_attack,
             p.special_defense,
             p.speed,
+            p.evolucao,
             tp.local,
             GROUP_CONCAT(DISTINCT t.nome ORDER BY t.nome SEPARATOR ', ') AS tipos
         FROM treinador_pokemon tp
@@ -408,6 +446,30 @@ def retirarBox_pokemon(pokemon_id):
     conn.close()
 
     return redirect(url_for('pokedex'))
+
+# ==============================================================================================================
+
+@app.route('/pokedex/retirarPokedex/<int:pokemon_id>', methods=['POST'])
+def retirarPokedex_pokemon(pokemon_id):
+    # Proteção de rota
+    if 'usuario_id' not in session:
+        flash("Você precisa fazer login para acessar esta página.", "erro")
+        return redirect(url_for('login'))
+
+    conn = mysql.connector.connect(**db_config)
+    cursor = conn.cursor(dictionary=True)
+
+    treinador_id = session['usuario_id']
+
+    cursor.execute("DELETE FROM treinador_pokemon WHERE (treinador_id = %s AND pokemon_id = %s)", (treinador_id, pokemon_id))
+    conn.commit()
+
+    cursor.close()
+    conn.close()
+
+    return redirect(url_for('pokedex'))
+
+# ==============================================================================================================
 
 @app.route('/pokedex/aumentarTime/<int:pokemon_id>', methods=['POST'])
 def aumentarTime_pokemon(pokemon_id):

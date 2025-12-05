@@ -24,12 +24,16 @@
             <div class="card-body d-flex flex-column">
                 <h5 class="card-title">{{ pokemon.nome }}</h5>
                 <p class="card-text small text-muted">
+                    <strong>ID:</strong> {{ pokemon.id or 'N/A' }}<br>
                     <strong>Vida:</strong> {{ pokemon.hp or 'N/A' }}<br>
+                    <strong>Altura:</strong> {{ pokemon.altura/10 or 'N/A' }}m<br>
+                    <strong>Peso:</strong> {{ pokemon.peso/10 or 'N/A' }}kg<br>
                     <strong>Dano Ataque:</strong> {{ pokemon.attack or 'N/A' }}<br>
                     <strong>Dano Ataque Especial:</strong> {{ pokemon.special_attack or 'N/A' }}<br>
                     <strong>Defesa:</strong> {{ pokemon.defense or 'N/A' }}<br>
                     <strong>Defesa Especial:</strong> {{ pokemon.special_defense or 'N/A' }}<br>
-                    <strong>Velocidade:</strong> {{ pokemon.speed or 'N/A' }}
+                    <strong>Velocidade:</strong> {{ pokemon.speed or 'N/A' }}<br>
+                    <strong>Evolução:</strong> {{ pokemon.evolucao or 'N/A' }}
                 </p>
                 <div class="mt-auto">
                     <p class="card-text small">

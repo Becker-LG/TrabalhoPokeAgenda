@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">Treinador:</h1>
+</div>
+
+<form action="{{ url_for('editar_treinador') }}" method="POST">
+    <div class="mb-3">
+        <label for="nome" class="form-label">Nome do Treinador</label>
+        <input type="text" class="form-control" id="nome" name="nome" value="{{ treinador.nome }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="email" class="form-label">Email</label>
+        <input type="email" class="form-control" id="email" name="email" value="{{ treinador.email }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="cpf" class="form-label">CPF</label>
+        <input type="text" class="form-control" id="cpf" name="cpf" value="{{ treinador.cpf }}" required>
+    </div>
+    <div class="mb-3">
+        <label for="foto" class="form-label">Foto do Treinador</label>
+        <input type="text" class="form-control" id="foto" name="foto" value="{{ treinador.foto }}">
+    </div>
+    <div class="mb-3">
+        <label for="cidade" class="form-label">Cidade do Treinador</label>
+        <input type="text" class="form-control" id="cidade" name="cidade" value="{{ treinador.cidade }}">
+    </div>
+    
+    <button type="submit" class="btn btn-primary">Atualizar</button>
+    <a href="{{ url_for('treinador') }}" class="btn btn-secondary">Cancelar</a>
+</form>
+{% endblock %}
