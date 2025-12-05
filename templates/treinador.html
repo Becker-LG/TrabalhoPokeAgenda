@@ -25,7 +25,7 @@
                   <td>{{ treinador.email }}</td>
                   <td>{{ treinador.cpf }}</td>
                   <td>{{ treinador.cidade }}</td>
-                  <td><img src="{{ treinador.foto if (treinador.foto != '') else ('https://via.placeholder.com/300x400.png?text=Sem+Imagem') }}" class="card-img-top" alt="Imagem do Treinador {{ treinador.nome }}" style="height: 320px; object-fit: cover;"></td>
+                  <td><img src="{{ treinador.foto if (treinador.foto != '') else ('https://via.placeholder.com/300x400.png?text=Sem+Imagem') }}" class="card-img-top" alt="Imagem do Treinador {{ treinador.nome }}" style="height: 225px; object-fit: contain;"></td>
                 </tr>
               </tbody>
             </table>

@@ -240,6 +240,7 @@ def pokemons():
     cursor = conn.cursor(dictionary=True)
 
     # Lógica de pesquisa
+    treinador_id = session['usuario_id']
     query = request.args.get('q')
 
     base_query = """
@@ -269,18 +270,23 @@ def pokemons():
             Pokemon_Tipo pt ON p.id = pt.pokemon_id
         LEFT JOIN
             Tipo t ON pt.tipo_id = t.id
+
+        -- 🔥 AQUI está a mudança principal 🔥
+        -- Só retorna local se o registro pertencer ao treinador_id
         LEFT JOIN
-            treinador_pokemon tp ON p.id = tp.pokemon_id
+            treinador_pokemon tp 
+            ON p.id = tp.pokemon_id 
+            AND tp.treinador_id = %s
     """
 
-    params = []
+    params = [treinador_id]
 
     # pesquisa por nome OU id
     if query:
         search_query = "%" + query + "%"
         base_query += " WHERE p.nome LIKE %s OR p.id = %s "
         params.append(search_query)
-        params.append(query)   # aqui você envia o valor puro, não com wildcards
+        params.append(query)
 
     base_query += """
         GROUP BY
@@ -292,7 +298,7 @@ def pokemons():
             p.nome ASC
     """
 
-    cursor.execute(base_query, params if params else None)
+    cursor.execute(base_query, params)
     lista_pokemons = cursor.fetchall()
 
     for p in lista_pokemons:
@@ -318,9 +324,11 @@ def adicionar_pokemon(pokemon_id):
     conn = mysql.connector.connect(**db_config)
     cursor = conn.cursor(dictionary=True)
 
+    treinador_id = session['usuario_id']
+
     # Lógica somente para POST
     local = 'time'
-    cursor.execute("SELECT * FROM treinador_pokemon WHERE local = %s", (local,))
+    cursor.execute("SELECT * FROM treinador_pokemon WHERE local = %s AND treinador_id = %s", (local, treinador_id))
     registro = cursor.fetchall()
     print(registro)
 
